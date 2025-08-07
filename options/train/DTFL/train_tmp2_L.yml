@@ -1,0 +1,108 @@
+# general settings
+name: DTFL
+model_type: SMTModel2
+num_gpu: 1  # set num_gpu: 0 for cpu mode
+manual_seed: 42
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: DBM_128
+    type: SMTDataset
+    data_root: E:\Desktop\Bathymetry_Data\data_vf\dataset_128\train_set\etopo
+    mask_type: irregular  # random or irregular (which is strip-shaped in tha paper)
+    data_aug: True
+    image_size: [128,128]
+
+
+    # data loader
+    use_shuffle: true
+    num_worker_per_gpu: 0
+    batch_size_per_gpu: 12 # when training, set it to 64.
+    dataset_enlarge_ratio: 1
+    prefetch_mode: ~
+
+  val:
+    name: DBM_128
+    type: SMTDataset
+    data_root:  E:\Desktop\Bathymetry_Data\data_vf\dataset_128\test_set\gt\etopo
+    mask_root: E:\Desktop\Bathymetry_Data\data_vf\dataset_128\test_set\mask\irregular
+    data_aug: False
+    image_size: [128,128]
+
+
+# network structures
+network_g:
+  type:  DTFL # same as ETU.
+  img_channels: 1
+  dim: 32
+  res: 8
+  attn_res: [16, 8]
+
+network_edge:
+  type:  Edge
+  img_channels: 2
+  img_resolution: 128
+  dim: 32
+  res: 8
+  attn_res: [32, 16, 8]
+
+
+# path
+path:
+  pretrain_network_edge: experiments_edge/MP_Line/models/net_g_best.pth # the file path of the pretrained TFL prediction network
+  pretrain_network_g: ~
+  strict_load_g: true
+  resume_state: ~
+
+# training settings
+train:
+  optim_g:
+    type: Adam
+    lr: !!float 1e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: MultiStepLR
+    milestones: [50000]
+    gamma: 0.5
+
+  total_iter: 77000
+  warmup_iter: -1
+
+  # losses
+  pixel_opt:
+    type: L1Loss
+    loss_weight: 1.0
+    reduction: mean
+
+# validation settings
+val:
+  val_freq: 385
+  save_img: false
+  pbar: True
+
+  metrics:
+    Mask_MAE:
+      type: calculate_mae
+      better: lower
+
+    Mask_RMSE:
+      type: calculate_rmse
+      better: lower
+
+
+# logging settings
+logger:
+  print_freq: 100
+  save_checkpoint_freq: !!float 5e3
+  use_tb_logger: true
+  wandb:
+    project: ~
+    resume_id: ~
+
+# dist training settings
+dist_params:
+  backend: nccl
+  port: 29500
